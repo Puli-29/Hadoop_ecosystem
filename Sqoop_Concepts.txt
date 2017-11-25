@@ -1,0 +1,321 @@
+Sqoop: Concepts
+==============================================================
+File Formats:
+==========================
+--as-avrodatafile	Imports data to Avro Data Files
+--as-sequencefile	Imports data to SequenceFiles
+--as-textfile	Imports data as plain text (default)
+==========================================
+Import Statements From Teradata :
+===========================================
+sudo su - nzhdusr
+sqoop import \
+--connect --driver com.teradata.jdbc.TeraDriver jdbc:teradata://TDP1/DATABASE=EIPDB_DIV \
+--connection-manager org.apache.sqoop.teradata.TeradataConnManager \
+--username dbc \
+--password dbc \
+--table EIT_ACCT_HIST \
+--target-dir /user/hive/incremental_table -m 1\
+========================================
+-- Query Import:
+====================================
+sqoop import 
+--driver com.teradata.jdbc.TeraDriver 
+--connection-manager org.apache.sqoop.manager.GenericJdbcManager  
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username hadoop
+ --password hadoop 
+ --query  "select * from eipdb_div.eit_cur limit 10"
+===========================================
+ --Spilt -by 
+=============================
+ sqoop import 
+ --driver com.teradata.jdbc.TeraDriver 
+ --connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+ --username hadoop
+ --password hadoop
+ --table  eit_cur
+ --split-by CUR_CDE 
+ --target-dir /tmp/sqoop_test/eit_cur_Off
+==========================================================
+Incremental Load:
+=======================================================
+Incremental -Append
+Incremental - column Check - Last Value
+
+sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username=hadoop 
+--password=hadoop
+--table EIT_ACC_HIST 
+--append 
+--target-dir /user/hive/warehouse/Hive_ACCT_HIST
+--where "department_id>7" 
+--outdir java_files
+
+sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username root 
+-P 
+--table EIT_ACCT_HIST 
+--check-column UDTD_DTE 
+--incremental append 
+--last-value {11/24/2017}
+
+sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV  
+--connection-manager org.apache.sqoop.teradata.TeradataConnManager 
+--username hadoop 
+--password hadoop 
+--table EIT_ACCT_HIST 
+--target-dir /user/hive/incremental_table -m 1
+--check-column UPDT_DTE 
+--incremental LST_MODFD_DTE 
+--last-value {11/24/2017}
+
+sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--connection-manager org.apache.sqoop.teradata.TeradataConnManager 
+--username hadoop 
+--password hadoop 
+--target-dir /user/hive/incremental_table -m 1 
+--query 'select * from EIT_ACCT_HIST where LST_MODFD_DTE > {11/24/2017} AND $CONDITIONS’
+
+
+Secured password provide:
+===========================================
+-p - password takes from console or a keyword
+--password -file "filepath/filename" - takes password from a file
+
+sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username root 
+-P 
+--table EIT_ACCT_HIST 
+--check-column UDTD_DTE 
+--incremental append 
+--last-value {11/24/2017}
+
+sqoop --options-file /user/cloudera/import.txt --table employee
+
+--options -file will contains the import statement
+
+sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username root 
+--option -file /user/sqoop/Mtp_sqoop_password.txt
+--table EIT_ACCT_HIST 
+--check-column UDTD_DTE 
+--incremental append 
+--last-value {11/24/2017}
+======================================================================
+Secured way of Data Transfer:
+=======================================================
+-compress - used to import the data in the form of .gz
+-compress -code - used to import the data in .bz format
+
+sqoop import
+ --connect 'jdbc:sqlserver://172.16.0.1\mssql;database=TestDW;username=test;password=test;'
+--table EIT_PTY_ACCT
+ -m 5 -split-by EI_ACCT_ID 
+ --hive-table output.RAW_UC_ACCOUNT
+--hive-import --compress --compression-codec
+org.apache.hadoop.io.compress.SnappyCodec -- 
+--schema COMMERCIAL
+--as-sequencefile
+
+sqoop import
+--driver com.mysql.jdbc.Driver
+--connect jdbc:mysql://test:3306/hive \
+--username hive \
+--password test \
+--table EIT_PTY_XREF \
+--hcatalog-database db_stage \
+--hcatalog-table RAW_UC_ACCOUNT \
+--create-hcatalog-RAW_UC_ACCOUNT \
+--hcatalog-storage-stanza "stored as orcfile" \
+--outdir sqoop_import \
+-m 1 \
+--compression-codec org.apache.hadoop.io.compress.SnappyCodec \
+==============================================================================================
+Faster data import from databases:
+==============================================================================
+-direct - used to import the data faster than normal 
+
+sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username root 
+-P
+--direct  
+--table EIT_ACCT_HIST 
+--check-column UDTD_DTE 
+--incremental append 
+--last-value {11/24/2017}
+
+BLOB OR CLOB data import:
+------------------------
+LobFile - used in import statement to get and load the large objects data in sqoop.
+
+sqoop import \
+--connect jdbc:mysql://mysqlhost.example.com/mysql_database \
+--username user_name -P \
+--table mysql_tablename \
+--hcatalog-database hcat_hive_db --hcatalog-table hcat_hive_table --create-hcatalog-table \
+--driver com.mysql.jdbc.Driver \
+-m 1
+
+sqoop import \
+--connect jdbc:mysql://mysqlhost.example.com/mysql_database \
+--username user_name -P \
+--table mysql_tablename \
+--hcatalog-database hcat_hive_db --hcatalog-table hcat_hive_table --create-hcatalog-table \
+--driver com.mysql.jdbc.Driver \
+--LobFile -file file.lob 
+-m 1
+
+
+
+===========================================================
+Increase/Reduce the Mappers:
+====================================
+-num - mappers - used to increase or decrease the mappers while importing the data
+-m 
+
+sqoop import 
+--driver com.teradata.jdbc.TeraDriver 
+--connection-manager org.apache.sqoop.manager.GenericJdbcManager  
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username hadoop
+--password hadoop 
+--query  "select * from eipdb_div.eit_cur limit 10"
+-m 8
+
+sqoop import 
+--driver com.teradata.jdbc.TeraDriver 
+--connection-manager org.apache.sqoop.manager.GenericJdbcManager  
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username hadoop
+--password hadoop 
+--query  "select * from eipdb_div.eit_cur limit 10"
+--num-mappers 8
+
+===================================================
+SQL query Execution:
+============================================
+-e -query - used to write the sql's and execute while importing the data.
+
+sqoop import 
+--driver com.teradata.jdbc.TeraDriver 
+--connection-manager org.apache.sqoop.manager.GenericJdbcManager  
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username hadoop
+ --password hadoop 
+ --query  "select * from eipdb_div.eit_acct_xref Xref INNER JOIN eipdb_div.eit_acct Acct
+ ON Acct.ei_acct_id=Xref.ei_acct_id where Acct.ei_acct_id is not null"
+===============================================================
+Direct Load to HCatalog:
+================================================
+-HCatalog - used to import the data directly in HCatalog directory
+Limitations : -as-avro,-direct, -as -sequentialfile,-target-dir, -export dir are not supported
+
+sqoop import
+--driver com.mysql.jdbc.Driver
+--connect jdbc:mysql://test:3306/hive \
+--username hive \
+--password test \
+--table EIT_PTY_XREF \
+--hcatalog-database db_stage \
+--hcatalog-table RAW_UC_ACCOUNT \
+--create-hcatalog-RAW_UC_ACCOUNT \
+--hcatalog-storage-stanza "stored as orcfile" \
+--outdir sqoop_import \
+-m 1 \
+--compression-codec org.apache.hadoop.io.compress.SnappyCodec \
+
+export subset of columns:
+-------------------------
+-column - used to import only the subset of columns
+==============================================================
+sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username=hadoop 
+--password=hadoop
+--table EIT_ACC_HIST 
+--append 
+--column ACCT_ID,ACCT_NAME,PRMNT_ADDR,CURR_ADDR
+--target-dir /user/hive/warehouse/Hive_ACCT_HIST
+--where "department_id>7" 
+--outdir java_files
+====================================================
+split and import the data:
+===========================================
+-split -by - used to import the data by the spliting 
+
+sqoop import
+ --connect 'jdbc:sqlserver://172.16.0.1\mssql;database=TestDW;username=test;password=test;'
+--table EIT_PTY_ACCT
+ -m 5 -split-by EI_ACCT_ID 
+ --hive-table output.RAW_UC_ACCOUNT
+--hive-import --compress --compression-codec
+org.apache.hadoop.io.compress.SnappyCodec -- 
+--schema COMMERCIAL
+--as-sequencefile
+============================================================== 
+ How many default mappers will be executed:
+ ====================================================
+ 4 - mappers
+ ===============================================================
+ Reduce Phase():
+ ==================================
+ Reduce Phase() is not availabe in sqoop , because there is no aggregation is happening while importing the data.
+ =====================================================================================================
+ Sqoop Job:
+ ==================================================================================================
+ Job which containd a single or many sqoop statements which has to be executed in a scheduling wise.
+ 
+ Sqoop JOB 
+ $sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username=hadoop 
+--password=hadoop
+--table EIT_ACC_HIST 
+--append 
+--target-dir /user/hive/warehouse/Hive_ACCT_HIST
+--where "department_id>7" 
+--outdir java_files
+======================================================== 
+ Merge :
+ ======================================================
+ - merge - used to merge the importing data with exisiting data
+ sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username=hadoop 
+--password=hadoop
+--table EIT_ACC_HIST 
+--append 
+--target-dir /user/hive/warehouse/Hive_ACCT_HIST
+--where "ACCt_ID>7" 
+--outdir java_files
+====================================================================
+--null-string <null-string>	The string to be written for a null value for string columns
+--null-non-string <null-string>	The string to be written for a null value for non-string columns
+sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username=hadoop 
+--password=hadoop
+--table EIT_ACC_HIST 
+--append 
+--target-dir /user/hive/warehouse/Hive_ACCT_HIST
+--where "ACCT_ID>7" 
+--null-string ACCT_NAME
+
+sqoop import 
+--connect jdbc:teradata://TDP1/DATABASE=EIPDB_DIV 
+--username=hadoop 
+--password=hadoop
+--table EIT_ACC_HIST 
+--append 
+--target-dir /user/hive/warehouse/Hive_ACCT_HIST
+--where "ACCT_ID>7" 
+--null-non-string ACCT_ID
+
