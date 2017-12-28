@@ -1,0 +1,406 @@
+﻿Hive Concepts:
+=============
+
+Hive Partition:
+==============
+- Dividing the large amount of data into number pieces of folders based on table columns value.
+- Often used for distributing load horizontally, this has performance benefit, and helps in organizing data in a logical fashion
+- PARTITIONED BY - Key to use in syntax 
+- Cab be used on Hive internal and External tables
+
+Partitioning works best when the cardinality of the partitioning field is not too high.
+
+Advantages:
+==========
+- Distribute execution load horizontally
+- Faster execution of queries in case of partition with low volume of data
+- Search can be done on patition folders 
+
+Disadvantages:
+=============
+- There is a possibility for creating too many folders in HDFS that is extra burden for Namenode metadata.
+
+
+Hive Bucketing:
+==============
+- Dividing the data into number of equal parts
+- We can perform Hive bucketing optimization only on one column only not more than one.
+- Uses Hash algorithm while dividing the data
+- Bucketing works well when the field has high cardinality and data is evenly distributed among buckets
+
+Advantages:
+==========
+- Due to equal volumes of data in each partition, joins at Map side will be quicker.
+- Faster query response like partitioning
+
+Disadvantages:
+=============
+- Can define number of buckets during table creation but loading of equal volume of data has to be done manually by programmers.
+
+
+CREATE TABLE HIVE_EIT_ACCT ( 
+         ACCT_ID INT,
+		 ACCT_NAME string,
+         ACCT_PRMY_ADDR string,
+		 ACCT_CURR_ADDR String,
+		 ACCT_BRANCH string,
+		 ACCT_LOC string,
+		 ACCT_CRTD_YR String,
+		 ACCT_CRTD_MNTH string,
+		 ACCT_CRTD_DAY string
+         ZIP INT ) 
+PARTITIONED BY (ACCT_CRTD_YR STRING, ACCT_CRTD_MNTH STRING, ACCT_CRTD_DAY STRING) 
+CLUSTERED BY (ACCT_ID) INTO 256 BUCKETS
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+Static vs Dynamic Partions:
+=========================
+
+Static Partition:
+================
+- Static partition is created while creating the table
+- Static Partition saves your time in loading data compared to dynamic partition
+- You can perform Static partition on Hive Manage table or external table
+- If you want to use Static partition in hive you should set property set hive.mapred.mode = strict  This property set by default in hive-site.xml
+
+Sample Code:
+==========
+CREATE TABLE EIT_ACCT(ACCT_ID INT,ACCT_NAME string, ACCT_PRMY_ADDR string,ACCT_CURR_ADDR string,ACCT_BRANCH string,ACCT_LOC string)
+partitioned BY (ACCT_LOC string)
+row format delimited
+FIELDS terminated BY ‘|’
+stored AS textfile;\
+
+hive> LOAD DATA LOCAL inpath ‘/home/mahesh/hive-related/hyderabad.log’ INTO TABLE EIT_ACCT partition (ACCT_LOC = ‘hyderabad’);
+
+Dynamic Partions:
+================
+
+To use Dyanmic partition , pre-requistly one need to set the below parameters
+        Set hive.exec.dynamic.partition = true
+		Set hive.exec.dynamic.parttion.mode = nonstrict
+		Set hive.exec.max.dynamic.parttions.pernode =100
+		Set hive.exec.max.dynamic.parttions.pernode =1000
+		Set hive.exec.max.created.files=10000
+		
+- Usually dynamic partition load the data from non partitioned table
+- Dynamic Partition takes more time in loading data compared to static partition
+- When you have large data stored in a table then Dynamic partition is suitable
+- When we want to partition and don't know the partition column, then Dyanmic partition is suitable
+- We can't alter the Dynamic partition
+- single insert to partition table is known as dynamic partition
+
+Sample Code:
+===========
+INSERT INTO TABLE EIT_ACCT_HIST PARTITION(ACCT_LOC) SELECT * FROM EIT_ACCT;
+
+Hive Complex Data Types:
+=======================
+ARRAY
+MAP
+STRUCT
+UNIONTYPE
+
+Hive ARRAY - An Ordered collection Of elements with same data type 
+=========
+CREATE TABLE hive_array_table
+(name String,
+sal int,
+age array<smallint>
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ‘,’
+LINES TERMINATED BY ‘\n’ stored AS textfile;
+
+MAP - An ordered collection key-value pairs, key must be in primitive type and value can be any type 
+===
+CREATE TABLE hive_map_table
+(name String,
+sal int,
+age array<smallint>
+feel map<string,boolean>
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ‘,’
+map KEYS terminated BY ':'
+LINES TERMINATED BY ‘\n’ stored AS textfile;
+
+STRUCT - Collection of an ordered elements with different data types
+======
+CREATE TABLE hive_struct_table
+(name String,
+sal int,
+address struct<city:String,state:String,zip:int>
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ‘,’
+collection items terminated BY ','
+LINES TERMINATED BY ‘\n’ stored AS textfile;
+
+UNIONTYPE - UNIONTYPE is collection of Heterogeneous data types
+=========
+Ex : UNIONTYPE<int, double, array<string>, struct<a:int,b:string>>
+
+CREATE TABLE empmahidata(
+    > cid bigint,
+    > cname struct<fname:string,lname:string>,
+    > cadd  struct<city:string,state:string>,
+    > cages array<smallint>,
+    > cfeel map<string,boolean>
+    > )
+    > row format delimited
+    > FIELDS terminated BY '|'
+    > collection items terminated BY ','
+    > map KEYS terminated BY ':'
+    > LINES terminated BY '\n' stored AS textfile;
+========================================================
+Major Components of Hive
+========================================================
+UI :- User Interface used to submit the HQL's
+Driver :- Recives Query from UI , converts into MR using in built API's
+Compiler :- Parses the Query , compiles and also partitions will be looked up from Metastore if required
+MetaStore :-  Storage area of Hive , by default it will be derby , One can also configure the Other databases like Oracle , MYSQL etc 
+Execution Engine :- Executes the code and provides the accurate results to the Hive shell
+
+External Table Creation:
+=======================
+hive> CREATE external TABLE IF NOT EXISTS EIT_ACCT(ACCT_ID INT,ACCT_NAME STRING,ACCT_PRMRY_ADDR STRING,ACCT_CURR_ADDR STRING)
+    > comment 'Customer Account Data'
+    > row format delimited                                                     
+    > FIELDS terminated BY '\t'  
+    > LINES terminated BY ‘\n’
+> stored AS textfile location '/hive_external_table_EIT_ACCT';
+
+LOAD DATA inpath '/accountdata/eit_account.txt' INTO TABLE EIT_ACCT;
+
+Default path for table creation in Hive - /user/hive/warehouse/EIT_ACCT
+
+Internal Table Creation:
+========================
+CREATE TABLE IF NOT EXISTS EIT_ACCT(ACCT_ID INT,ACCT_NAME STRING,ACCT_PRMRY_ADDR STRING,ACCT_CURR_ADDR STRING)
+> comment 'Customer Account Details'
+ > row format delimited 
+ > FIELDS terminated BY '\t'
+> LINES terminated BY ‘\n’
+ > stored AS textfile;
+ 
+ Default path for table creation in Hive - /user/hive/warehouse/EIT_ACCT
+ 
+hive> LOAD DATA LOCAL inpath '/home/account-data/Account.txt' INTO TABLE EIT_ACCT;
+
+From HDFS:
+----------
+LOAD DATA inpath '/import22/part-m-00000' INTO TABLE EIT_ACCT;
+
+Hive Date Functions:
+======================
+Unix_Timestamp()	BigInt	We will get current Unix timestamp in seconds
+To_date(string timestamp)	string	It will fetch and give the date part of a timestamp string:
+year(string date)	INT	It will fetch and give the year part of a date or a timestamp string
+quarter(date/timestamp/string)	INT	It will fetch and give the quarter of the year for a date, timestamp, or string in the range 1 to 4
+month(string date)	INT	It will give the month part of a date or a timestamp string
+hour(string date)	INT	It will fetch and gives the hour of the timestamp
+minute(string date)	INT	It will fetch and gives the minute of the timestamp
+Date_sub(string starting date, int days)	string	It will fetch and gives Subtraction of number of days to starting date
+Current_date	date	It will fetch and gives the current date at the start of query evaluation
+LAST _day(string date)	string	It will fetch and gives the last day of the month which the date belongs to
+trunc(string date, string format)	string	It will fetch and gives date truncated to the unit specified by the format. 
+
+Supported formats in this :MONTH/MON/MM, YEAR/YYYY/YY.
+=========================================================================
+String Functions:
+===================
+reverse(string X)	string	It will give the reversed string of X
+rpad(string str, int length, string pad)	string	It will fetch and gives str, which is right-padded with pad to a length of length(integer value)
+rtrim(string X)	string	It will fetch and returns the string resulting from trimming spaces from the end (right hand side) of X For example, rtrim(' results ') results in ' results'
+space(INT n)	string	It will fetch and gives a string of n spaces.
+split(STRING str, STRING pat)	array	Splits str around pat (pat is a regular expression).
+Str_to_map(text[, delimiter1, delimiter2])	map<String ,String>	It will split text into key-value pairs using two delimiters.
+===============================================================================================================================
+Conditional Functions:
+======================
+if(Boolean testCondition, T valueTrue, T valueFalseOrNull)	T	It will fetch and gives value True when Test Condition is of true, gives value False Or Null otherwise.
+ISNULL( X)	Boolean	It will fetch and gives true if X is NULL and false otherwise.
+ISNOTNULL(X )	Boolean	It will fetch and gives true if X is not NULL and false otherwise.
+=============================================================================================
+Mathematical Functions:
+========================
+round(DOUBLE X)	DOUBLE	It will fetch and returns the rounded BIGINT value of X
+round(DOUBLE X, INT d)	DOUBLE	It will fetch and returns X rounded to d decimal places
+bround(DOUBLE X)	DOUBLE	It will fetch and returns the rounded BIGINT value of X using HALF_EVEN rounding mode
+floor(DOUBLE X)	BIGINT	It will fetch and returns the maximum BIGINT value that is equal to or less than X value
+ceil(DOUBLE a), ceiling(DOUBLE a)	BIGINT	It will fetch and returns the minimum BIGINT value that is equal to or greater than X value
+rand(), rand(INT seed)	DOUBLE	It will fetch and returns a random number that is distributed uniformly from 0 to 1
+===========================================================================================================================================
+
+Hive UDF's:
+==========
+1. Create a Java class for the User Defined Function which extends ora.apache.hadoop.hive.sq.exec.UDF 
+    and implements more than one evaluate() methods. Put in your desired logic and you are almost there.
+2. Package your Java class into a JAR file (I am using Maven)
+3. Go to Hive CLI, add your JAR, and verify your JARs is in the Hive CLI classpath
+4. CREATE TEMPORARY FUNCTION in Hive which points to your Java class
+5. Use it in Hive SQL and have fun!
+
+Create a Java Class:
+===================
+evaluate(Text str, String stripChars) - will trim specified characters in stripChars from first argument str.
+evaluate(Text str) - will trim leading and trailing spaces.
+-----------------------------------------------------------------------------
+package org.hardik.letsdobigdata;
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.hive.ql.exec.UDF;
+import org.apache.hadoop.io.Text;
+public class Strip extends UDF {
+private Text result = new Text();
+ public Text evaluate(Text str, String stripChars) {
+ if(str == null) {
+ return null;
+ }
+ result.set(StringUtils.strip(str.toString(), stripChars));
+ return result;
+ }
+ public Text evaluate(Text str) {
+ if(str == null) {
+ return null;
+ }
+ result.set(StringUtils.strip(str.toString()));
+ return result;
+ }
+}
+--------------------------
+There is a pom.xml attached in GitHub. Please make sure you have Maven installed. If you are working with a GitHub clone, go to your shell:
+$ cd HiveUDFs
+and run "mvn clean package". This will create a JAR file which contains our UDF class. Copy the JAR's path.
+---------------------------------------------
+Go to the Hive CLI and Add the UDF JAR 
+
+hive> ADD /home/cloudera/workspace/HiveUDFs/target/HiveUDFs-0.0.1-SNAPSHOT.jar;
+Added [/home/cloudera/workspace/HiveUDFs/target/HiveUDFs-0.0.1-SNAPSHOT.jar] to class path
+Added resources: [/home/cloudera/workspace/HiveUDFs/target/HiveUDFs-0.0.1-SNAPSHOT.jar]
+
+Verify JAR is in Hive CLI Classpath
+You should see your jar in the list.
+
+hive> list jars;
+/usr/lib/hive/lib/hive-contrib.jar
+/home/cloudera/workspace/HiveUDFs/target/HiveUDFs-0.0.1-SNAPSHOT.jar
+====================================================================
+hive> CREATE TEMPORARY FUNCTION STRIP AS 'org.hardik.letsdobigdata.Strip';
+ hive> select strip('hadoop','ha') from dummy;
+ OK
+ doop
+ Time taken: 0.131 seconds, Fetched: 1 row(s)
+ hive> select strip('   hiveUDF ') from dummy;
+ OK
+ hiveUDF
+ =======================================================
+Array(Struct)
+CREATE TABLE employee_struct(
+  rol_dtl array<struct<customer_id:string,customer_name:string,customer_grade:int>>,
+  file_load_timestamp string)
+PARTITIONED BY (
+  batchid bigint)
+  stored as orc;
+  
+  
+
+insert into employee_struct partition(batchid=1)  
+select array(NAMED_STRUCT('customer_id',student_id,'customer_name',student_name,'customer_grade',grade)),CURRENT_TIMESTAMP() from employee;
+  
+insert into employee_struct partition(batchid=5)  
+select array(NAMED_STRUCT('customer_id',cast(NULL as string),'customer_name',cast(NULL as string),'customer_grade',cast(NULL as int))),CURRENT_TIMESTAMP() from employee;
+
+if the source table is having nulls in its columns the destination Array<struct> will simply accept the nulls and doesnt throw any error.
+
+
+
+===========================================================
+ User Defined Aggregated Function(UDAF):
+ -----------------------------------------
+1.Create a Java class which extends org.apache.hadoop.hive.ql.exec.hive.UDAF;
+2.Create an inner class which implements UDAFEvaluator;
+3.Implement five methods ()
+	init() – The init() method initializes the evaluator and resets its internal state. We are using new Column() in the code below to indicate that no values have been aggregated yet.
+	iterate() – this method is called every time there is a new value to be aggregated. The evaulator should update its internal state with the result of performing the aggregation (we are doing sum – see below). We return true to indicate that the input was valid.
+	terminatePartial() – this method is called when Hive wants a result for the partial aggregation. The method must return an object that encapsulates the state of the aggregation.
+	merge() – this method is called when Hive decides to combine one partial aggregation with another.
+	terminate() – this method is called when the final result of the aggregation is needed.
+4.Compile and package the JAR
+5.CREATE TEMPORARY FUNCTION in hive CLI
+6.Run Aggregation Query and Verify Output!!!
+----------------------------------------------
+MeanUDAF:
+
+package org.hardik.letsdobigdata;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hive.ql.exec.Description;
+import org.apache.hadoop.hive.ql.exec.UDAF;
+import org.apache.hadoop.hive.ql.exec.UDAFEvaluator;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.hardik.letsdobigdata.MeanUDAF.MeanUDAFEvaluator.Column;
+@Description(name = "Mean", value = "_FUNC(double) - computes mean", extended = "select col1, MeanFunc(value) from table group by col1;")
+public class MeanUDAF extends UDAF {
+// Define Logging
+static final Log LOG = LogFactory.getLog(MeanUDAF.class.getName());
+public static class MeanUDAFEvaluator implements UDAFEvaluator {
+/**
+ * Use Column class to serialize intermediate computation
+ * This is our groupByColumn
+ */
+public static class Column {
+ double sum = 0;
+ int count = 0;
+ }
+private Column col = null;
+public MeanUDAFEvaluator() {
+ super();
+ init();
+ }
+// A - Initalize evaluator - indicating that no values have been
+ // aggregated yet.
+public void init() {
+ LOG.debug("Initialize evaluator");
+ col = new Column();
+ }
+// B- Iterate every time there is a new value to be aggregated
+ public boolean iterate(double value) throws HiveException {
+ LOG.debug("Iterating over each value for aggregation");
+ if (col == null)
+ throw new HiveException("Item is not initialized");
+ col.sum = col.sum + value;
+ col.count = col.count + 1;
+ return true;
+ }
+// C - Called when Hive wants partially aggregated results.
+ public Column terminatePartial() {
+ LOG.debug("Return partially aggregated results");
+ return col;
+ }
+ // D - Called when Hive decides to combine one partial aggregation with another
+ public boolean merge(Column other) {
+ LOG.debug("merging by combining partial aggregation");
+ if(other == null) {
+ return true;
+ }
+ col.sum += other.sum;
+ col.count += other.count;
+ return true; 
+}
+ // E - Called when the final result of the aggregation needed.
+ public double terminate(){
+ LOG.debug("At the end of last record of the group - returning final result"); 
+ return col.sum/col.count;
+ }
+ }
+}
+-----------------------------
+Package and ADD JAR
+hive> ADD JAR /home/cloudera/workspace/HiveUDFs/target/HiveUDFs-0.0.1-SNAPSHOT.jar;
+Added [/home/cloudera/workspace/HiveUDFs/target/HiveUDFs-0.0.1-SNAPSHOT.jar] to class path
+Added resources: [/home/cloudera/workspace/HiveUDFs/target/StudentCourseMRJob-0.0.1-SNAPSHOT.jar]
+-----------------------------------
+CREATE FUNCTION in HIVE
+hive> CREATE TEMPORARY FUNCTION MeanFunc AS 'org.hardik.letsdobigdata.MeanUDAF';
+OK
+
+select CUST_ACCT,CUST_ACCT_NAME, MeanFunc(ACCT_BAL) from EIT_ACCT group by ACCT_ID;
